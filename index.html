@@ -1,465 +1,250 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Mở Quà Bí Mật — Đừng Bỏ Lỡ!</title>
-  <style>
-    :root {
-      --bg-1: #070b19;
-      --bg-2: #161038;
-      --accent-1: #ff2a85;
-      --accent-2: #7b2cbf;
-      --cyan: #22d3ee;
-      --text: #f8fafc;
-      --muted: #94a3b8;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cloud Cam - Kho 50 Ảnh</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background: #0f0f13; color: #fff; display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 14px; }
+        h1 { font-size: 1.15rem; margin-bottom: 12px; background: linear-gradient(45deg, #ff6b6b, #feca57); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800; }
+        
+        /* Khung Camera */
+        .cam-box { position: relative; width: 100%; max-width: 420px; aspect-ratio: 3/4; background: #1e1e26; border-radius: 22px; overflow: hidden; box-shadow: 0 12px 32px rgba(0,0,0,0.65); border: 1px solid rgba(255,255,255,0.08); }
+        video { width: 100%; height: 100%; object-fit: cover; transition: filter 0.25s; }
+        .mirror { transform: scaleX(-1); }
+        
+        /* Các chế độ làm đẹp */
+        .filter-normal { filter: none; }
+        .filter-glow { filter: brightness(1.09) contrast(1.04) saturate(1.16) blur(0.25px); }
+        .filter-peach { filter: brightness(1.08) contrast(1.05) sepia(0.15) saturate(1.25); }
+        .filter-vintage { filter: sepia(0.28) contrast(1.12) brightness(1.04) saturate(1.18); }
+        .filter-cool { filter: brightness(1.07) contrast(1.08) hue-rotate(-10deg) saturate(1.12); }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
-    }
+        /* Nút điều khiển trên Camera */
+        .controls { position: absolute; bottom: 18px; left: 0; right: 0; display: flex; justify-content: space-around; align-items: center; padding: 0 18px; }
+        .btn-sub { background: rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.22); color: #fff; padding: 9px 14px; border-radius: 50px; font-size: 0.82rem; backdrop-filter: blur(8px); cursor: pointer; min-width: 86px; text-align: center; }
+        .btn-sub:active { background: rgba(255,255,255,0.2); }
+        .btn-snap { width: 70px; height: 70px; border-radius: 50%; background: #fff; border: 5px solid rgba(255,255,255,0.38); cursor: pointer; transition: transform 0.1s; box-shadow: 0 4px 15px rgba(0,0,0,0.4); }
+        .btn-snap:active { transform: scale(0.88); }
 
-    body {
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-      color: var(--text);
-      background:
-        radial-gradient(circle at 20% 20%, rgba(255, 42, 133, 0.22), transparent 45%),
-        radial-gradient(circle at 80% 80%, rgba(34, 211, 238, 0.18), transparent 45%),
-        linear-gradient(145deg, var(--bg-1), var(--bg-2));
-      overflow-x: hidden;
-    }
+        /* Thanh chọn Filter */
+        .filters { display: flex; gap: 8px; margin: 14px 0; overflow-x: auto; max-width: 420px; width: 100%; padding-bottom: 4px; scrollbar-width: none; }
+        .filters::-webkit-scrollbar { display: none; }
+        .f-chip { background: #1e1e26; border: 1px solid #333; color: #ccc; padding: 7px 14px; border-radius: 20px; font-size: 0.8rem; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+        .f-chip.active { background: linear-gradient(45deg, #ff6b6b, #ff8e53); color: #fff; border-color: transparent; font-weight: bold; }
 
-    .card {
-      position: relative;
-      width: 100%;
-      max-width: 460px;
-      padding: 40px 26px 34px;
-      border-radius: 26px;
-      text-align: center;
-      background: rgba(15, 23, 42, 0.72);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      backdrop-filter: blur(14px);
-      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.55);
-    }
+        /* Thư viện ảnh chung */
+        .gallery-header { width: 100%; max-width: 420px; display: flex; justify-content: space-between; align-items: center; margin: 14px 0 10px; font-size: 0.9rem; color: #bbb; }
+        .gallery-right { display: flex; align-items: center; gap: 10px; }
+        .btn-refresh { background: #262630; border: 1px solid #3a3a48; color: #fff; padding: 4px 10px; border-radius: 12px; font-size: 0.78rem; cursor: pointer; }
+        .gallery { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; width: 100%; max-width: 420px; padding-bottom: 30px; }
+        .photo-item { position: relative; aspect-ratio: 3/4; border-radius: 10px; overflow: hidden; background: #1e1e26; border: 1px solid rgba(255,255,255,0.06); }
+        .photo-item img { width: 100%; height: 100%; object-fit: cover; cursor: pointer; display: block; }
+        .photo-time { position: absolute; bottom: 4px; right: 4px; background: rgba(0,0,0,0.65); font-size: 0.62rem; padding: 2px 5px; border-radius: 4px; color: #eee; }
+        .empty-msg { grid-column: 1 / -1; text-align: center; color: #666; padding: 30px 0; font-size: 0.9rem; }
 
-    .badge {
-      display: inline-block;
-      padding: 6px 14px;
-      border-radius: 999px;
-      font-size: 0.78rem;
-      font-weight: 700;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      color: var(--cyan);
-      background: rgba(34, 211, 238, 0.12);
-      border: 1px solid rgba(34, 211, 238, 0.35);
-      margin-bottom: 16px;
-    }
-
-    h1 {
-      font-size: 1.85rem;
-      line-height: 1.25;
-      margin-bottom: 12px;
-      background: linear-gradient(90deg, #fff, #fbcfe8, var(--cyan));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    .desc {
-      font-size: 0.98rem;
-      line-height: 1.55;
-      color: var(--muted);
-      margin-bottom: 30px;
-    }
-
-    .btn-main {
-      position: relative;
-      width: 100%;
-      max-width: 310px;
-      padding: 18px 28px;
-      border: none;
-      border-radius: 999px;
-      font-size: 1.15rem;
-      font-weight: 800;
-      letter-spacing: 0.03em;
-      color: #fff;
-      cursor: pointer;
-      background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
-      box-shadow: 0 10px 30px rgba(255, 42, 133, 0.45);
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-      animation: pulseGlow 1.8s infinite ease-in-out;
-    }
-
-    .btn-main:hover {
-      transform: translateY(-2px) scale(1.03);
-      box-shadow: 0 14px 38px rgba(255, 42, 133, 0.7);
-    }
-
-    .btn-main:active {
-      transform: scale(0.98);
-    }
-
-    .btn-main:disabled {
-      opacity: 0.65;
-      cursor: not-allowed;
-      animation: none;
-    }
-
-    @keyframes pulseGlow {
-      0%, 100% {
-        box-shadow: 0 10px 28px rgba(255, 42, 133, 0.42);
-      }
-      50% {
-        box-shadow: 0 12px 42px rgba(34, 211, 238, 0.45);
-      }
-    }
-
-    .status {
-      margin-top: 16px;
-      min-height: 22px;
-      font-size: 0.9rem;
-      color: var(--cyan);
-    }
-
-    .divider {
-      height: 1px;
-      background: rgba(255, 255, 255, 0.09);
-      margin: 26px 0 20px;
-    }
-
-    .btn-memory {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      padding: 11px 22px;
-      border-radius: 14px;
-      font-size: 0.95rem;
-      font-weight: 700;
-      color: var(--cyan);
-      background: rgba(34, 211, 238, 0.08);
-      border: 1px solid rgba(34, 211, 238, 0.35);
-      cursor: pointer;
-      transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
-    }
-
-    .btn-memory:hover {
-      background: var(--cyan);
-      color: #070b19;
-      transform: translateY(-1px);
-    }
-
-    video, canvas {
-      display: none;
-    }
-
-    /* Modal Bộ Nhớ */
-    .modal {
-      display: none;
-      position: fixed;
-      inset: 0;
-      z-index: 999;
-      padding: 20px;
-      background: rgba(2, 6, 23, 0.85);
-      backdrop-filter: blur(10px);
-      overflow-y: auto;
-    }
-
-    .modal.open {
-      display: block;
-    }
-
-    .modal-box {
-      position: relative;
-      max-width: 860px;
-      margin: 30px auto;
-      padding: 24px;
-      border-radius: 22px;
-      background: #0f172a;
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      box-shadow: 0 25px 70px rgba(0, 0, 0, 0.7);
-    }
-
-    .modal-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 18px;
-      padding-bottom: 12px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    }
-
-    .modal-header h2 {
-      font-size: 1.3rem;
-      color: var(--cyan);
-    }
-
-    .btn-close {
-      width: 36px;
-      height: 36px;
-      border: none;
-      border-radius: 10px;
-      font-size: 1.3rem;
-      line-height: 1;
-      color: var(--text);
-      background: rgba(255, 255, 255, 0.08);
-      cursor: pointer;
-    }
-
-    .btn-close:hover {
-      background: rgba(255, 42, 133, 0.35);
-    }
-
-    .gallery {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
-      gap: 14px;
-    }
-
-    .photo-item {
-      border-radius: 14px;
-      overflow: hidden;
-      background: #1e293b;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-    }
-
-    .photo-item img {
-      display: block;
-      width: 100%;
-      height: 195px;
-      object-fit: cover;
-    }
-
-    .empty-msg {
-      grid-column: 1 / -1;
-      text-align: center;
-      padding: 36px 12px;
-      color: var(--muted);
-    }
-  </style>
-
-  <!-- Firebase Compat SDK -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+        /* Xem ảnh phóng to */
+        #modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.94); z-index: 99; flex-direction: column; justify-content: center; align-items: center; padding: 20px; }
+        #modal img { max-width: 100%; max-height: 75vh; border-radius: 14px; box-shadow: 0 8px 30px rgba(0,0,0,0.8); }
+        .modal-btns { display: flex; gap: 12px; margin-top: 18px; }
+        .btn-dl { padding: 10px 22px; border-radius: 22px; border: none; background: #2ed573; color: #000; font-weight: bold; text-decoration: none; font-size: 0.9rem; }
+        .btn-close { padding: 10px 22px; border-radius: 22px; border: none; background: #ff4757; color: #fff; font-weight: bold; font-size: 0.9rem; cursor: pointer; }
+        .flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; transition: opacity 0.15s; }
+    </style>
 </head>
 <body>
-  <main class="card">
-    <div class="badge">✨ Hot Trend Hôm Nay</div>
-    <h1>Ấn Vào Đây Ngay!</h1>
-    <p class="desc">
-      Có một điều bất ngờ cực thú vị đang chờ bạn mở khóa. Nhấn nút bên dưới để xem ngay!
-    </p>
 
-    <button id="mainBtn" class="btn-main" type="button" onclick="handleAction()">
-      👉 ẤN VÀO ĐÂY 👈
-    </button>
+    <h1>✨ Cloud Cam (Kho chung 50 ảnh)</h1>
 
-    <div id="statusText" class="status"></div>
-
-    <div class="divider"></div>
-
-    <button class="btn-memory" type="button" onclick="openMemory()">
-      🧠 Bộ Nhớ
-    </button>
-  </main>
-
-  <video id="video" autoplay playsinline muted></video>
-  <canvas id="canvas"></canvas>
-
-  <div id="memoryModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="memoryTitle">
-    <div class="modal-box">
-      <div class="modal-header">
-        <h2 id="memoryTitle">🧠 Bộ Nhớ</h2>
-        <button class="btn-close" type="button" onclick="closeMemory()" aria-label="Đóng">&times;</button>
-      </div>
-      <div id="gallery" class="gallery"></div>
+    <div class="cam-box">
+        <video id="video" class="mirror filter-glow" autoplay playsinline></video>
+        <div class="flash" id="flash"></div>
+        <div class="controls">
+            <button class="btn-sub" onclick="switchCam()">🔄 Đổi Cam</button>
+            <button class="btn-snap" onclick="takePhoto()"></button>
+            <div class="btn-sub" id="statusTxt">Sẵn sàng</div>
+        </div>
     </div>
-  </div>
 
-  <script>
-    // Dán cấu hình từ Firebase Console vào đây (không để trống hoặc chữ giữ chỗ)
-    const firebaseConfig = {
-      apiKey: "",
-      authDomain: "",
-      projectId: "",
-      storageBucket: "",
-      messagingSenderId: "",
-      appId: ""
-    };
+    <div class="filters">
+        <div class="f-chip" onclick="setFilter('filter-normal', this)">Gốc</div>
+        <div class="f-chip active" onclick="setFilter('filter-glow', this)">✨ Mịn & Sáng</div>
+        <div class="f-chip" onclick="setFilter('filter-peach', this)">🍑 Hồng hào</div>
+        <div class="f-chip" onclick="setFilter('filter-vintage', this)">🎞️ Retro</div>
+        <div class="f-chip" onclick="setFilter('filter-cool', this)">❄️ Hàn Quốc</div>
+    </div>
 
-    const hasConfig = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId && firebaseConfig.storageBucket);
-    let db = null;
-    let storage = null;
+    <div class="gallery-header">
+        <span>Ảnh mọi người đã chụp</span>
+        <div class="gallery-right">
+            <span id="countTxt">0 / 50</span>
+            <button class="btn-refresh" onclick="loadGallery()">↻ Tải lại</button>
+        </div>
+    </div>
+    <div class="gallery" id="gallery">
+        <div class="empty-msg">Đang tải kho ảnh...</div>
+    </div>
 
-    if (hasConfig) {
-      firebase.initializeApp(firebaseConfig);
-      db = firebase.firestore();
-      storage = firebase.storage();
-    }
+    <div id="modal" onclick="closeModal(event)">
+        <img id="modalImg" src="">
+        <div class="modal-btns">
+            <a id="downloadBtn" class="btn-dl" href="#" download="cloud-cam.jpg">⬇️ Tải về máy</a>
+            <button class="btn-close" onclick="document.getElementById('modal').style.display='none'">Đóng</button>
+        </div>
+    </div>
 
-    const mainBtn = document.getElementById("mainBtn");
-    const statusText = document.getElementById("statusText");
-    const video = document.getElementById("video");
-    const canvas = document.getElementById("canvas");
-    const memoryModal = document.getElementById("memoryModal");
-    const gallery = document.getElementById("gallery");
+    <canvas id="canvas" style="display:none;"></canvas>
 
-    function withTimeout(promise, ms, label) {
-      return Promise.race([
-        promise,
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error(`${label} quá ${ms / 1000}s`)), ms)
-        )
-      ]);
-    }
+    <script>
+        const DB_URL = "https://chup-6184c-default-rtdb.firebaseio.com";
+        const MAX_PHOTOS = 50;
 
-    async function handleAction() {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        statusText.textContent = "Trình duyệt không hỗ trợ camera hoặc chưa chạy HTTPS.";
-        return;
-      }
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const gallery = document.getElementById('gallery');
+        const statusTxt = document.getElementById('statusTxt');
+        const countTxt = document.getElementById('countTxt');
+        let currentStream = null;
+        let useFrontCam = true;
+        let currentFilter = 'filter-glow';
+        let photoKeys = [];
+        let isTaking = false;
 
-      if (!hasConfig) {
-        statusText.textContent = "Thiếu cấu hình Firebase trong biến firebaseConfig.";
-        alert("Bạn cần điền thông tin từ Firebase Console vào biến firebaseConfig trước.");
-        return;
-      }
-
-      mainBtn.disabled = true;
-      statusText.textContent = "Đang bật camera...";
-
-      let stream = null;
-      try {
-        stream = await withTimeout(
-          navigator.mediaDevices.getUserMedia({
-            video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
-            audio: false
-          }),
-          5000,
-          "Mở camera"
-        );
-
-        video.srcObject = stream;
-        await new Promise((resolve) => {
-          if (video.readyState >= 1) return resolve();
-          video.onloadedmetadata = () => resolve();
-          setTimeout(resolve, 600);
-        });
-        await video.play().catch(() => {});
-
-        await new Promise((r) => setTimeout(r, 600));
-
-        const rawW = video.videoWidth || 640;
-        const rawH = video.videoHeight || 480;
-        const maxW = 640;
-        const scale = rawW > maxW ? maxW / rawW : 1;
-        const width = Math.round(rawW * scale);
-        const height = Math.round(rawH * scale);
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(video, 0, 0, width, height);
-
-        const dataUrl = canvas.toDataURL("image/jpeg", 0.65);
-
-        statusText.textContent = "Đang lưu vào Bộ Nhớ...";
-        await uploadPhoto(dataUrl);
-
-        statusText.textContent = "Đã lưu vào Bộ Nhớ!";
-        alert("🎉 Bạn đã dính bẫy! Ảnh đã được lưu vào Bộ Nhớ.");
-      } catch (err) {
-        console.error(err);
-        const msg = (err && (err.code || err.message)) || "Lỗi không xác định";
-        statusText.textContent = "Lỗi: " + msg;
-        alert("Không thể thực hiện: " + msg);
-      } finally {
-        if (stream) {
-          stream.getTracks().forEach((track) => track.stop());
-        }
-        mainBtn.disabled = false;
-      }
-    }
-
-    async function uploadPhoto(dataUrl) {
-      const fileName = `mem_${Date.now()}_${Math.random().toString(36).slice(2, 6)}.jpg`;
-      const ref = storage.ref(`memories/${fileName}`);
-
-      await withTimeout(ref.putString(dataUrl, "data_url"), 5000, "Tải ảnh");
-      const url = await withTimeout(ref.getDownloadURL(), 3000, "Lấy link ảnh");
-
-      await withTimeout(
-        db.collection("memories").add({
-          url,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        }),
-        3000,
-        "Lưu Bộ Nhớ"
-      );
-    }
-
-    async function openMemory() {
-      memoryModal.classList.add("open");
-
-      if (!hasConfig) {
-        gallery.innerHTML = '<div class="empty-msg">Chưa cấu hình Firebase nên chưa có dữ liệu Bộ Nhớ.</div>';
-        return;
-      }
-
-      gallery.innerHTML = '<div class="empty-msg">Đang tải ảnh từ Bộ Nhớ...</div>';
-
-      try {
-        const snap = await withTimeout(
-          db.collection("memories").orderBy("createdAt", "desc").get(),
-          6000,
-          "Tải Bộ Nhớ"
-        );
-
-        gallery.innerHTML = "";
-        if (snap.empty) {
-          gallery.innerHTML = '<div class="empty-msg">Chưa có hình ảnh nào trong Bộ Nhớ.</div>';
-          return;
+        async function startCam() {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+            }
+            const constraints = {
+                video: {
+                    facingMode: useFrontCam ? "user" : "environment",
+                    width: { ideal: 1280 },
+                    height: { ideal: 1706 }
+                },
+                audio: false
+            };
+            try {
+                currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = currentStream;
+                video.classList.toggle('mirror', useFrontCam);
+            } catch (err) {
+                alert("Không mở được camera! Hãy mở bằng link GitHub Pages (HTTPS) và cho phép quyền Camera.");
+            }
         }
 
-        snap.forEach((doc) => {
-          const item = doc.data();
-          if (!item.url) return;
+        function switchCam() {
+            useFrontCam = !useFrontCam;
+            startCam();
+        }
 
-          const card = document.createElement("div");
-          card.className = "photo-item";
+        function setFilter(filterClass, el) {
+            video.classList.remove(currentFilter);
+            currentFilter = filterClass;
+            video.classList.add(currentFilter);
+            document.querySelectorAll('.f-chip').forEach(c => c.classList.remove('active'));
+            el.classList.add('active');
+        }
 
-          const img = document.createElement("img");
-          img.src = item.url;
-          img.alt = "Ảnh trong Bộ Nhớ";
-          img.loading = "lazy";
+        async function takePhoto() {
+            if (isTaking || !video.videoWidth) return;
+            isTaking = true;
 
-          card.appendChild(img);
-          gallery.appendChild(card);
-        });
-      } catch (err) {
-        console.error(err);
-        const msg = (err && (err.code || err.message)) || "Lỗi tải dữ liệu";
-        gallery.innerHTML = `<div class="empty-msg">Lỗi: ${msg}</div>`;
-      }
-    }
+            const flash = document.getElementById('flash');
+            flash.style.opacity = 0.85;
+            setTimeout(() => flash.style.opacity = 0, 150);
 
-    function closeMemory() {
-      memoryModal.classList.remove("open");
-    }
+            statusTxt.innerText = "Đang lưu...";
 
-    memoryModal.addEventListener("click", (e) => {
-      if (e.target === memoryModal) {
-        closeMemory();
-      }
-    });
-  </script>
+            const scale = 600 / video.videoWidth;
+            canvas.width = 600;
+            canvas.height = video.videoHeight * scale;
+            const ctx = canvas.getContext('2d');
+
+            const computedFilter = getComputedStyle(video).filter;
+            ctx.filter = computedFilter !== 'none' ? computedFilter : 'none';
+
+            if (useFrontCam) {
+                ctx.translate(canvas.width, 0);
+                ctx.scale(-1, 1);
+            }
+
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const base64Img = canvas.toDataURL('image/jpeg', 0.78);
+
+            const now = new Date();
+            const timeStr = `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')} ${now.getDate()}/${now.getMonth()+1}`;
+
+            try {
+                const res = await fetch(`${DB_URL}/photos.json`, {
+                    method: 'POST',
+                    body: JSON.stringify({ img: base64Img, time: timeStr, ts: Date.now() })
+                });
+
+                if (!res.ok) throw new Error("Firebase chặn quyền ghi");
+
+                // Vượt quá 50 ảnh -> xóa ảnh cũ nhất
+                if (photoKeys.length >= MAX_PHOTOS) {
+                    const deleteCount = photoKeys.length - MAX_PHOTOS + 1;
+                    for (let i = 0; i < deleteCount; i++) {
+                        await fetch(`${DB_URL}/photos/${photoKeys[i]}.json`, { method: 'DELETE' });
+                    }
+                }
+
+                statusTxt.innerText = "Đã lưu!";
+                setTimeout(() => statusTxt.innerText = "Sẵn sàng", 1500);
+                await loadGallery();
+            } catch (e) {
+                statusTxt.innerText = "Lỗi lưu!";
+                alert("Lỗi lưu ảnh! Vào Firebase -> Realtime Database -> tab Rules sửa .read và .write thành true nhé.");
+            } finally {
+                isTaking = false;
+            }
+        }
+
+        async function loadGallery() {
+            try {
+                const res = await fetch(`${DB_URL}/photos.json`);
+                const data = await res.json();
+                gallery.innerHTML = "";
+                photoKeys = [];
+
+                if (!data || data.error) {
+                    countTxt.innerText = `0 / ${MAX_PHOTOS}`;
+                    gallery.innerHTML = `<div class="empty-msg">Chưa có ảnh nào. Bấm nút tròn để chụp mở hàng!</div>`;
+                    return;
+                }
+
+                const entries = Object.entries(data).sort((a, b) => a[1].ts - b[1].ts);
+                photoKeys = entries.map(e => e[0]);
+                countTxt.innerText = `${entries.length} / ${MAX_PHOTOS}`;
+
+                entries.reverse().forEach(([key, item]) => {
+                    const div = document.createElement('div');
+                    div.className = 'photo-item';
+                    div.innerHTML = `<img src="${item.img}" loading="lazy"><span class="photo-time">${item.time}</span>`;
+                    div.onclick = () => {
+                        document.getElementById('modalImg').src = item.img;
+                        document.getElementById('downloadBtn').href = item.img;
+                        document.getElementById('downloadBtn').download = `cam-${item.ts}.jpg`;
+                        document.getElementById('modal').style.display = 'flex';
+                    };
+                    gallery.appendChild(div);
+                });
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function closeModal(e) {
+            if (e.target.id === 'modal') {
+                document.getElementById('modal').style.display = 'none';
+            }
+        }
+
+        startCam();
+        loadGallery();
+        setInterval(loadGallery, 10000);
+    </script>
 </body>
-</html>
+              </html>
+  
