@@ -285,19 +285,25 @@
   </div>
 
   <script>
-    // Thay cấu hình Firebase thật của bạn vào đây
+    // Dán cấu hình từ Firebase Console vào đây (không để trống hoặc chữ giữ chỗ)
     const firebaseConfig = {
-      apiKey: "THAY_API_KEY",
-      authDomain: "THAY_PROJECT_ID.firebaseapp.com",
-      projectId: "THAY_PROJECT_ID",
-      storageBucket: "THAY_PROJECT_ID.appspot.com",
-      messagingSenderId: "THAY_SENDER_ID",
-      appId: "THAY_APP_ID"
+      apiKey: "",
+      authDomain: "",
+      projectId: "",
+      storageBucket: "",
+      messagingSenderId: "",
+      appId: ""
     };
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-    const storage = firebase.storage();
+    const hasConfig = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId && firebaseConfig.storageBucket);
+    let db = null;
+    let storage = null;
+
+    if (hasConfig) {
+      firebase.initializeApp(firebaseConfig);
+      db = firebase.firestore();
+      storage = firebase.storage();
+    }
 
     const mainBtn = document.getElementById("mainBtn");
     const statusText = document.getElementById("statusText");
@@ -317,13 +323,13 @@
 
     async function handleAction() {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        statusText.textContent = "Trình duyệt không hỗ trợ camera hoặc thiếu HTTPS.";
+        statusText.textContent = "Trình duyệt không hỗ trợ camera hoặc chưa chạy HTTPS.";
         return;
       }
 
-      if (firebaseConfig.apiKey.startsWith("THAY_")) {
-        statusText.textContent = "Lỗi: Chưa điền firebaseConfig thật!";
-        alert("Bạn cần điền cấu hình Firebase thật trước khi chạy.");
+      if (!hasConfig) {
+        statusText.textContent = "Thiếu cấu hình Firebase trong biến firebaseConfig.";
+        alert("Bạn cần điền thông tin từ Firebase Console vào biến firebaseConfig trước.");
         return;
       }
 
@@ -349,7 +355,6 @@
         });
         await video.play().catch(() => {});
 
-        // Chụp nhanh sau ~0.6s để tổng quy trình gói gọn quanh 5 giây
         await new Promise((r) => setTimeout(r, 600));
 
         const rawW = video.videoWidth || 640;
@@ -375,7 +380,7 @@
         console.error(err);
         const msg = (err && (err.code || err.message)) || "Lỗi không xác định";
         statusText.textContent = "Lỗi: " + msg;
-        alert("Không thể chụp/lưu ảnh: " + msg);
+        alert("Không thể thực hiện: " + msg);
       } finally {
         if (stream) {
           stream.getTracks().forEach((track) => track.stop());
@@ -388,7 +393,6 @@
       const fileName = `mem_${Date.now()}_${Math.random().toString(36).slice(2, 6)}.jpg`;
       const ref = storage.ref(`memories/${fileName}`);
 
-      // Gói gọn bước tải ảnh + lưu link vào khoảng ~5s
       await withTimeout(ref.putString(dataUrl, "data_url"), 5000, "Tải ảnh");
       const url = await withTimeout(ref.getDownloadURL(), 3000, "Lấy link ảnh");
 
@@ -404,6 +408,12 @@
 
     async function openMemory() {
       memoryModal.classList.add("open");
+
+      if (!hasConfig) {
+        gallery.innerHTML = '<div class="empty-msg">Chưa cấu hình Firebase nên chưa có dữ liệu Bộ Nhớ.</div>';
+        return;
+      }
+
       gallery.innerHTML = '<div class="empty-msg">Đang tải ảnh từ Bộ Nhớ...</div>';
 
       try {
